@@ -17,7 +17,7 @@ class CheckUserStatus
     public function handle(Request $request, Closure $next, string $role): Response
     {
         $user = $request->user();
-        if ($user && $user->id == $role) {
+        if ($user && $user->role == $role) {
             return $next($request);
         }
         // 2. The Kill Switch (with a dynamic error message)

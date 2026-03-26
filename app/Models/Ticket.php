@@ -8,19 +8,26 @@ use Illuminate\Support\Str;
 
 class Ticket extends Model
 {
-
-public $incrementing = false;
+    protected $fillable = [
+        'ticket_code',
+        'event_id',
+        'attendee_id',
+        'status'
+    ];
+    public $incrementing = false;
     protected $keyType = 'string';
-    protected static function booted():void{
-static::creating(function($event){
-    $event->id = (string) Str::uuid();
-});
+    protected static function booted(): void
+    {
+        static::creating(function ($event) {
+            $event->id = (string) Str::uuid();
+        });
     }
-    public function user():BelongsTo{
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class, 'attendee_id');
-
     }
-    public function event():belongsTo{
+    public function event(): belongsTo
+    {
         return $this->belongsTo(Event::class);
     }
 }

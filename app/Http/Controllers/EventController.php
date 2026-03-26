@@ -10,7 +10,7 @@ class EventController extends Controller
 {
     public function index(Request $request)
     {
-        return Event::all()->paginate(3);
+        return Event::orderBy('date', 'asc')->paginate(10);
     }
     public function show($id)
     {
@@ -30,6 +30,7 @@ class EventController extends Controller
         $newEvent = Event::create($event);
         return response()->json([
             'message' => 'Event created successfully',
+            'details' => $newEvent
         ], 201);
     }
     public function update(Request $request, $id)
@@ -45,26 +46,26 @@ class EventController extends Controller
         // 3. Now that we know they own it, validate the incoming data
         $changes =  $request->validate([
             'title' => [
-                'required',
+
                 'string',
                 'min:5',
                 'max:50'
             ],
             'description' => [
-                'required',
+
                 'string',
                 'max:300',
             ],
             'location' => [
-                'required',
+
                 'string',
             ],
             'capacity' => [
-                'required',
+
                 'integer'
             ],
             'date' => [
-                'required',
+
                 'date'
             ]
         ]);

@@ -9,7 +9,14 @@ use Illuminate\Support\Str;
 
 class Event extends Model
 {
-
+protected $fillable = [
+    'title',
+    'description',
+    'location',
+    'capacity',
+    'date',
+    'organizer_id'
+];
 
     public $incrementing = false;
     protected $keyType = 'string';
