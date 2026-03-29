@@ -1,0 +1,29 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/devmeetup
+            git pull origin master
+            composer install --no-dev --optimize-autoloader
+            php artisan config:clear
+            php artisan config:cache
+            php artisan route:clear
+            php artisan route:cache
+            php artisan migrate --force
+            sudo systemctl restart php8.2-fpm
+            sudo systemctl reload nginx
