@@ -10,7 +10,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [RegisteredUserController::class, 'store'])
-    ->middleware('guest')
+    ->middleware('guest', 'throttle:signup')
     ->name('register');
 
 Route::post('/login', [AuthController::class, 'login'])
@@ -18,7 +18,7 @@ Route::post('/login', [AuthController::class, 'login'])
     ->name('login');
 
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-    ->middleware('guest')
+    ->middleware('guest', 'throttle:3,1')
     ->name('password.email');
 
 Route::post('/reset-password', [NewPasswordController::class, 'store'])
@@ -33,6 +33,8 @@ Route::post('/email/verification-notification', [EmailVerificationNotificationCo
     ->middleware(['auth', 'throttle:6,1'])
     ->name('verification.send');
 
-Route::post('/logout', [AuthController::class, 'destroy'])
-    ->middleware('auth')
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->middleware('auth:sanctum')
     ->name('logout');
+    //auth is for sessions
+    //auth:sanctum is for tokens

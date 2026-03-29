@@ -23,6 +23,7 @@ Route::middleware(['auth:sanctum', 'role:organizer'])->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'role:attendee'])->group(function () {
+    Route::get('ticket/{id}', [TicketController::class, 'show']);
     Route::post('event/{id}/book', [TicketController::class, 'store']);
     Route::get('/my-tickets', [TicketController::class, 'index']);
     Route::patch('tickets/{id}/cancel', [TicketController::class, 'update']);
