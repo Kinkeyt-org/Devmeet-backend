@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\EventCreationRequest;
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate as FacadesGate;
 
 class EventController extends Controller
 {
@@ -33,16 +34,11 @@ class EventController extends Controller
             'details' => $newEvent
         ], 201);
     }
-    public function update(Request $request, $id)
+    public function update(Request $request, Event $event)
     {
-        // Find the event first (Throws 404 automatically if it doesn't exist)
-        $eventfinder = Event::findorfail($id);
-        // 2. Check ownership using the securely authenticated user's ID
-        if ($request->user()->id !== $eventfinder->organizer_id) {
-            return response()->json([
-                'message' => 'You cannot make changes to this event because it does not belong to you',
-            ], 403);
-        }
+       
+      //check for ownership of event using my event policy which returns a boolean granting access or not
+     FacadesGate::authorize('update', $event);
         // 3. Now that we know they own it, validate the incoming data
         $changes =  $request->validate([
             'title' => [
@@ -70,7 +66,7 @@ class EventController extends Controller
             ]
         ]);
 
-        $eventfinder->update($changes);
+        $event->update($changes);
         return response()->json([
             'message' => 'success',
 
