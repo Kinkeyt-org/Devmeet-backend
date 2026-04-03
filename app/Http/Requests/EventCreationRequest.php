@@ -61,7 +61,11 @@ class EventCreationRequest extends FormRequest
                 'required',
                 'date',
                 'after:today'
-            ]
+            ],
+            'is_free'     => ['required', 'boolean'],
+
+            // 2. Only require a price if 'is_free' is false
+            'price'       => ['required_if:is_free,false', 'nullable', 'numeric', 'min:1'],
         ];
     }
     public function messages(): array

@@ -4,7 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use app\Http\Resources\UserResource;
+use App\Http\Resources\UserResource;
 
 class EventResource extends JsonResource
 {
@@ -21,6 +21,9 @@ class EventResource extends JsonResource
             'description' => $this->description,
             'location' => $this->location,
             'capacity' => $this->capacity,
+            'banner' => $this->banner,
+            'is_free' => $this->is_free,
+            'price' => $this->price,
             'event_date' => $this->date->format('Y-m-d g:i A'),
             'event_date_human' => $this->date->diffForHumans(),
             'created_at' => $this->created_at->diffForHumans(),

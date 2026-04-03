@@ -17,6 +17,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'role'=>['string'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'profile_picture' => [
                 'required_if:role,organizer',
@@ -38,7 +39,7 @@ class RegisteredUserController extends Controller
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->string('password')),
-            'role'     => 'attendee', // Will be updated
+            'role'     => ($request->role == 'organizer') ? 'organizer' : 'attendee', // Will be updated
            'profile_picture' => $picturePath,
         ]);
 

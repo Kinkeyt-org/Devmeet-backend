@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Tag extends Model
 {
+    protected $fillable = [
+        'name',
+        'slug'
+    ];
 public function events(): BelongsToMany
     {
         return $this->belongsToMany(Event::class);

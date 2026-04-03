@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 class Event extends Model
 {
     use HasFactory;
-   
+
     protected $fillable = [
         'title',
         'description',
@@ -23,9 +23,15 @@ class Event extends Model
         'capacity',
         'date',
         'organizer_id',
-        'banner'
+        'banner',
+        'is_free',
+        'price',
     ];
-
+    protected $casts = [
+        'date'    => 'date', // Turns the string into a Carbon date object
+        'is_free' => 'boolean',// Ensures this is always true/false, not 1/0
+        'price'   => 'decimal:2',// Ensures price always has 2 decimal places
+    ];
     public $incrementing = false;
     protected $keyType = 'string';
     protected static function booted(): void
@@ -37,7 +43,7 @@ class Event extends Model
     /**
      * Accessor: Automatically provides the full S3 URL for the banner.
      */
- protected function banner(): Attribute
+    protected function banner(): Attribute
     {
         return Attribute::make(
             get: fn($value) => $value ? Storage::disk('s3')->url($value) : null,
