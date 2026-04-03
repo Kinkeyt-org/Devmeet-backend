@@ -18,6 +18,8 @@ return new class extends Migration
             $table->text('description');   
             $table->string('location');
             $table->integer('capacity');
+            $table->string('banner');
+            $table->decimal('price');
             $table->date('date');
              $table->timestamps();
         });

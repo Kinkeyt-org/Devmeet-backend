@@ -16,16 +16,17 @@ class EventResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'=>$this->id,
-           'title'=>$this->title,
-           'description'=>$this->description,
-           'location'=>$this->location,
-           'capacity' => $this->capacity,
-           'event_date'=> $this->date->format(),
-           'created_at'=>$this->created_at->diffforHumans(),
-           //returns a simple boolean value
-           'is_sold_out'=>$this->capacity <= 0,
-           'organizer'=>new UserResource ($this->whenLoaded('organizer'))
+            'id' => $this->id,
+            'title' => $this->title,
+            'description' => $this->description,
+            'location' => $this->location,
+            'capacity' => $this->capacity,
+            'event_date' => $this->date->format('Y-m-d g:i A'),
+            'event_date_human' => $this->date->diffForHumans(),
+            'created_at' => $this->created_at->diffForHumans(),
+            //returns a simple boolean
+            'is_sold_out' => $this->tickets_count >= $this->capacity,
+            'organizer' => new UserResource($this->whenLoaded('organizer'))
         ];
     }
 }
