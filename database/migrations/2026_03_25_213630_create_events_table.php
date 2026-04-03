@@ -15,11 +15,14 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('organizer_id')->constrained('users')->onDelete('cascade');
             $table->string('title');
-            $table->text('description');   
+            $table->text('description');
             $table->string('location');
             $table->integer('capacity');
+            $table->string('banner');
+            $table->boolean('is_free')->default(false);
+            $table->decimal('price', 8, 2)->nullable(); 
             $table->date('date');
-             $table->timestamps();
+            $table->timestamps();
         });
     }
 
