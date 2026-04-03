@@ -23,12 +23,13 @@ class RegisteredUserController extends Controller
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->string('password')),
-            'role'     => 'attendee',
+            'role'     => 'attendee', // ✅ ADDED — satisfies NOT NULL constraint
         ]);
 
         event(new Registered($user));
 
         
+        // ✅ Return token instead of noContent() — works with token-based auth
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
