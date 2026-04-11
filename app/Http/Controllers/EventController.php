@@ -3,104 +3,179 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\EventCreationRequest;
+use App\Http\Requests\EventUpdateRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use App\Models\Tag;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate as FacadesGate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
     public function index(Request $request)
     {
+        $perPage = (int) $request->get('per_page', 10);
 
-        $query = Event::with(['user', 'ticketTiers'])->withCount('tickets');
-        if ($request->filled('search')) {
+        $query = Event::query()
+            ->with([
+                'user:id,name',
+                'ticketTiers:id,event_id,name,price,capacity',
+                'tags:id,name,slug',
+            ])
+            ->withCount('tickets');
+
+        // Search
+        $query->when($request->filled('search'), function ($q) use ($request) {
             $searchTerm = '%' . $request->search . '%';
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('title', 'LIKE', $searchTerm)
+            $q->where(function ($inner) use ($searchTerm) {
+                $inner->where('title', 'LIKE', $searchTerm)
                     ->orWhere('location', 'LIKE', $searchTerm)
-                    ->orWhereHas('user', function ($organizeQuery) use ($searchTerm) {
-                        $organizeQuery->where('name', 'LIKE', $searchTerm);
-                    });
+                    ->orWhereHas('user', fn($u) => $u->where('name', 'LIKE', $searchTerm));
             });
-        }
-        $events = $query->latest('date')->paginate(10)->withQueryString();
+        });
+
+        // Tag filter (by slug)
+        $query->when($request->filled('tags'), function ($q) use ($request) {
+            $tagSlugs = array_map('trim', explode(',', $request->tags));
+
+            $q->whereIn('id', function ($sub) use ($tagSlugs) {
+                $sub->select('event_id')
+                    ->from('event_tag')
+                    ->join('tags', 'tags.id', '=', 'event_tag.tag_id')
+                    ->whereIn('tags.slug', $tagSlugs);
+            });
+        });
+
+        $events = $query->latest('date')
+            ->paginate($perPage)
+            ->withQueryString();
+
         return EventResource::collection($events);
     }
+
     public function show(Event $event)
     {
-        //note we only use the request class if a user is submitting a form or typing in something to us
-        $event->load(['user', 'ticketTiers', 'tags']);
-        return new EventResource($event);
-    }
-    public function store(EventCreationRequest $request)
-    {
-        $eventData = $request->validated();
-        $eventData['organizer_id'] = $request->user()->id;
-        // 1. Handle Banner Upload to S3
-       if ($request->hasFile('banner')) {
-            $eventData['banner'] = $request->file('banner')->store('events/banners', 's3');
-        }
-        $newEvent = Event::create($eventData);
-
-        if ($request->has('tags')) {
-            $tagIds = [];
-            foreach ($request->input('tags') as $tagName) {
-                $tag = Tag::firstOrCreate([
-                    'name' => trim($tagName),
-                    'slug' => Str::slug($tagName)
-                ]);
-                $tagIds[] = $tag->id;
-            }
-            $newEvent->tags()->sync($tagIds);
-        }
-        return new EventResource($newEvent->load('tags'));
-    }
-    public function update(Request $request, Event $event)
-    {
-
-        //check for ownership of event using my event policy which returns a boolean granting access or not
-       FacadesGate::authorize('update', $event);
-
-        $changes = $request->validate([
-            'title'       => ['string', 'min:5', 'max:50'],
-            'description' => ['string', 'max:300'],
-            'location'    => ['string'],
-            'capacity'    => ['integer'],
-            'date'        => ['date'],
-            'banner'      => ['nullable', 'image', 'max:2048'] // Validate banner in update too
+        $event->load([
+            'user:id,name',
+            'ticketTiers:id,event_id,name,price,capacity',
+            'tags:id,name,slug',
         ]);
 
-        // 1. If a new banner is uploaded, swap it out on S3
-        if ($request->hasFile('banner')) {
-            $changes['banner'] = $request->file('banner')->store('events/banners', 's3');
-        }
-
-        $event->update($changes);
-
-        // 2. Sync tags in update as well (Essential!)
-        if ($request->has('tags')) {
-            $tagIds = [];
-            foreach ($request->input('tags') as $tagName) {
-                $tag = Tag::firstOrCreate([
-                    'name' => trim($tagName),
-                    'slug' => Str::slug($tagName)
-                ]);
-                $tagIds[] = $tag->id;
-            }
-            $event->tags()->sync($tagIds);
-        }
-
-        return new EventResource($event->load(['user', 'ticketTiers', 'tags']));
+        return new EventResource($event);
     }
-    public  function destroy(Event $event)
+
+    public function store(EventCreationRequest $request)
     {
-        FacadesGate::authorize('delete', $event);
+        $data = $request->validated();
+        $data['organizer_id'] = $request->user()->id;
+
+        if ($request->hasFile('banner')) {
+            $path = $request->file('banner')->store('events/banners', 's3');
+
+            if (!$path) {
+                return response()->json(['message' => 'Banner upload failed'], 500);
+            }
+
+            $data['banner'] = $path;
+        }
+
+        $event = DB::transaction(function () use ($data, $request) {
+            $event = Event::create($data);
+
+            if ($request->filled('tags')) {
+                $this->syncTags($event, $request->input('tags'));
+            }
+
+            return $event;
+        });
+
+        return (new EventResource($event->load([
+            'user:id,name',
+            'tags:id,name,slug'
+        ])))->response()->setStatusCode(201);
+    }
+
+    public function update(Request $request, Event $event)
+    {
+        Gate::authorize('update', $event);
+
+       $changes = $request->validate([
+        'title' => 'sometimes|string|max:255',
+        'description' => 'sometimes|string',
+        'location' => 'sometimes|string|max:255',
+        'capacity' => 'sometimes|integer|min:1',
+        'date' => 'sometimes|date|after_or_equal:today',
+        'is_free' => 'sometimes|boolean',
+        'price' => 'nullable|numeric|min:0',
+        'banner' => 'nullable|image|max:2048',
+        'tags' => 'nullable|array',
+        'tags.*' => 'string|max:50'
+    ]);
+
+        if ($request->hasFile('banner')) {
+            $path = $request->file('banner')->store('events/banners', 's3');
+
+            if (!$path) {
+                return response()->json(['message' => 'Banner upload failed'], 500);
+            }
+
+            if ($event->banner) {
+                try {
+                    Storage::disk('s3')->delete($event->banner);
+                } catch (\Exception $e) {
+                    report($e);
+                }
+            }
+
+            $changes['banner'] = $path;
+        }
+
+        DB::transaction(function () use ($event, $changes, $request) {
+            $event->update($changes);
+
+            if ($request->filled('tags')) {
+                $this->syncTags($event, $request->input('tags'));
+            }
+        });
+
+        return new EventResource($event->load([
+            'user:id,name',
+            'ticketTiers:id,event_id,name,price,capacity',
+            'tags:id,name,slug',
+        ]));
+    }
+
+    public function destroy(Event $event)
+    {
+        Gate::authorize('delete', $event);
+
+        if ($event->banner) {
+            try {
+                Storage::disk('s3')->delete($event->banner);
+            } catch (\Exception $e) {
+                report($e);
+            }
+        }
+
         $event->delete();
-        return response()->json([
-            'message' => 'Event deleted successfully.',
-        ], 200);
+
+        return response()->json(['message' => 'Event deleted successfully.']);
+    }
+
+    private function syncTags(Event $event, array $tagNames): void
+    {
+        $tagNames = array_unique(array_filter(array_map('trim', $tagNames)));
+
+        $tagIds = collect($tagNames)->map(function ($name) {
+            return Tag::firstOrCreate(
+                ['name' => $name],
+                ['slug' => Str::slug($name)]
+            )->id;
+        })->toArray();
+
+        $event->tags()->sync($tagIds);
     }
 }
