@@ -24,10 +24,14 @@ class EventResource extends JsonResource
             'banner' => $this->banner,
             'is_free' => $this->is_free,
             'price' => $this->price,
-            'event_date' => $this->date->format('Y-m-d g:i A'),
-            'event_date_human' => $this->date->diffForHumans(),
-            'created_at' => $this->created_at->diffForHumans(),
-            //returns a simple boolean
+            
+            // FIX: Added the nullsafe operator (?) to both date methods
+            'event_date' => $this->date?->format('Y-m-d g:i A'),
+            'event_date_human' => $this->date?->diffForHumans(),
+            
+            // Optional but recommended: protect created_at just in case!
+            'created_at' => $this->created_at?->diffForHumans(),
+            
             'is_sold_out' => $this->tickets_count >= $this->capacity,
             'organizer' => new UserResource($this->whenLoaded('organizer'))
         ];

@@ -15,11 +15,11 @@ Route::prefix('v1')->group(function () {
 
 
 Route::get('events', [EventController::class, 'index']);
-Route::get('events/{id}', [EventController::class, 'show']);
+Route::get('events/{event}', [EventController::class, 'show']);
 Route::middleware(['auth:sanctum', 'role:organizer'])->group(function () {
     Route::post('events', [EventController::class, 'store']);
-    Route::put('events/{id}', [EventController::class, 'update']);
-    Route::delete('events/{id}', [EventController::class, 'destroy']);
+    Route::put('events/{event}', [EventController::class, 'update']);
+    Route::delete('events/{event}', [EventController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'role:attendee'])->group(function () {
@@ -28,4 +28,4 @@ Route::middleware(['auth:sanctum', 'role:attendee'])->group(function () {
     Route::get('/my-tickets', [TicketController::class, 'index']);
     Route::patch('tickets/{id}/cancel', [TicketController::class, 'update']);
 });
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

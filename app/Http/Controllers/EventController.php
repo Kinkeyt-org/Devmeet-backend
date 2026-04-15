@@ -67,7 +67,7 @@ class EventController extends Controller
         return new EventResource($event);
     }
 
-    public function store(EventCreationRequest $request)
+public function store(EventCreationRequest $request)
     {
         $data = $request->validated();
         $data['organizer_id'] = $request->user()->id;
@@ -85,7 +85,8 @@ class EventController extends Controller
         $event = DB::transaction(function () use ($data, $request) {
             $event = Event::create($data);
 
-            if ($request->filled('tags')) {
+            // FIX: Use has() instead of filled(), and format the tags properly
+            if ($request->has('tags')) {
                 $this->syncTags($event, $request->input('tags'));
             }
 
@@ -102,18 +103,18 @@ class EventController extends Controller
     {
         Gate::authorize('update', $event);
 
-       $changes = $request->validate([
-        'title' => 'sometimes|string|max:255',
-        'description' => 'sometimes|string',
-        'location' => 'sometimes|string|max:255',
-        'capacity' => 'sometimes|integer|min:1',
-        'date' => 'sometimes|date|after_or_equal:today',
-        'is_free' => 'sometimes|boolean',
-        'price' => 'nullable|numeric|min:0',
-        'banner' => 'nullable|image|max:2048',
-        'tags' => 'nullable|array',
-        'tags.*' => 'string|max:50'
-    ]);
+        $changes = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'description' => 'sometimes|string',
+            'location' => 'sometimes|string|max:255',
+            'capacity' => 'sometimes|integer|min:1',
+            'date' => 'sometimes|date|after_or_equal:today',
+            'is_free' => 'sometimes|boolean',
+            'price' => 'nullable|numeric|min:0',
+            'banner' => 'nullable|image|max:2048',
+            // FIX: Removed strict 'array' validation so it accepts FormData strings
+            'tags' => 'nullable' 
+        ]);
 
         if ($request->hasFile('banner')) {
             $path = $request->file('banner')->store('events/banners', 's3');
@@ -136,7 +137,8 @@ class EventController extends Controller
         DB::transaction(function () use ($event, $changes, $request) {
             $event->update($changes);
 
-            if ($request->filled('tags')) {
+            // FIX: Use has() instead of filled()
+            if ($request->has('tags')) {
                 $this->syncTags($event, $request->input('tags'));
             }
         });
@@ -147,6 +149,32 @@ class EventController extends Controller
             'tags:id,name,slug',
         ]));
     }
+
+    // FIX: Removed strict "array" type hint so it accepts strings from FormData
+    private function syncTags(Event $event, $tagsInput): void
+    {
+        // If the tags came in as a comma-separated string from FormData, turn it into an array
+        if (is_string($tagsInput)) {
+            $tagNames = explode(',', $tagsInput);
+        } else {
+            // Otherwise, it's already an array (or null)
+            $tagNames = (array) $tagsInput;
+        }
+
+        $tagNames = array_unique(array_filter(array_map('trim', $tagNames)));
+
+        $tagIds = collect($tagNames)->map(function ($name) {
+            return Tag::firstOrCreate(
+                ['name' => $name],
+                ['slug' => Str::slug($name)]
+            )->id;
+        })->toArray();
+
+        // This will successfully clear tags if an empty array/string was passed!
+        $event->tags()->sync($tagIds);
+    }
+
+   
 
     public function destroy(Event $event)
     {
@@ -165,17 +193,5 @@ class EventController extends Controller
         return response()->json(['message' => 'Event deleted successfully.']);
     }
 
-    private function syncTags(Event $event, array $tagNames): void
-    {
-        $tagNames = array_unique(array_filter(array_map('trim', $tagNames)));
-
-        $tagIds = collect($tagNames)->map(function ($name) {
-            return Tag::firstOrCreate(
-                ['name' => $name],
-                ['slug' => Str::slug($name)]
-            )->id;
-        })->toArray();
-
-        $event->tags()->sync($tagIds);
-    }
+    
 }
