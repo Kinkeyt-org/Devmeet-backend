@@ -133,11 +133,12 @@ class TicketController extends Controller
             $event = Event::where('id', $ticket->event_id)->lockForUpdate()->first();
             //increase the capcity of the event
             $event->increment('capacity');
+            DB::commit();
+
             return response()->json([
                 'message' => 'Ticket has been successfully cancelled',
                 'capacity_left' => $event->capacity //tell us the capacity left
             ], 200);
-            DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Ticket Cancellation failed: ' . $e->getMessage());
@@ -146,11 +147,14 @@ class TicketController extends Controller
             ], 500);
         }
     }
-    public function show($id)
+    public function show(Request $request, $id)
     {
         //show a singular ticket
         //ticket where the event where the selected id is found
         $ticket = Ticket::with('event')->findOrFail($id);
+        if ($ticket->attendee_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         //return a formatted view of it
         return new TicketResource($ticket);
     }

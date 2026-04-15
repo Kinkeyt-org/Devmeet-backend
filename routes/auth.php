@@ -19,7 +19,6 @@ Route::patch('/update', [AuthController::class, 'update'])
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('guest')
     ->name('login');
-
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
     ->middleware('guest', 'throttle:3,1')
     ->name('password.email');
