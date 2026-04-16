@@ -48,13 +48,20 @@ class EventController extends Controller
                     ->whereIn('tags.slug', $tagSlugs);
             });
         });
-
-        $events = $query->latest('date')
+$sort = $request->get('sort', 'recent');
+if ($sort == 'recent'){
+ $events = $query->latest('date')
             ->paginate($perPage)
             ->withQueryString();
 
+       
+}else {
+    $events = $query->orderBy('date')
+    ->paginate($perPage)
+    ->withQueryString();
+}
         return EventResource::collection($events);
-    }
+}
 
     public function show(Event $event)
     {
