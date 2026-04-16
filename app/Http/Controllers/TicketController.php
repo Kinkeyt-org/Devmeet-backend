@@ -74,7 +74,12 @@ class TicketController extends Controller
             DB::commit();
 
             // to allow users to be able to see all their purchased tickets they just bought we need to check tickets where th event_id is equal to the $event->id and the same for user. sort it with the list we got from the array. any code on the list that is inside the 'ticket_code' will be gotten
-            $ticketdetails = Ticket::where('event_id', $event->id)->where('attendee_id', $request->user()->id)->whereIn('ticket_code', $codes)->get();
+     // The fixed code (added ->with('event'))
+$ticketdetails = Ticket::with('event')
+    ->where('event_id', $event->id)
+    ->where('attendee_id', $request->user()->id)
+    ->whereIn('ticket_code', $codes)
+    ->get();
 
             //return to the frontend
 
