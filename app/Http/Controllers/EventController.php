@@ -7,6 +7,7 @@ use App\Http\Requests\EventUpdateRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use App\Models\Tag;
+use App\Services\HelperFunction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -75,7 +76,14 @@ if ($sort == 'recent'){
     }
 
 public function store(EventCreationRequest $request)
+
     {
+        HelperFunction::attachLogData($request, [
+            'level'=> 'info',
+            'message' => 'Inspecting incoming frontend payload for location data',
+            'incoming_data' => $request->all(),
+        ]);
+
         $data = $request->validated();
         $data['organizer_id'] = $request->user()->id;
 
@@ -114,6 +122,8 @@ public function store(EventCreationRequest $request)
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'location' => 'sometimes|string|max:255',
+            'latitude'    => 'nullable|numeric|between:-90,90',
+            'longitude'   => 'nullable|numeric|between:-180,180',
             'capacity' => 'sometimes|integer|min:1',
             'date' => 'sometimes|date|after_or_equal:today',
             'is_free' => 'sometimes|boolean',

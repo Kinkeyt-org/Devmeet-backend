@@ -42,6 +42,9 @@ class EventCreationRequest extends FormRequest
                 'required',
                 'string',
             ],
+            'latitude'  => ['nullable', 'numeric', 'between:-90,90'],
+            // Longitude must be a number between -180 and 180
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'capacity' => [
                 'required',
                 'integer',
