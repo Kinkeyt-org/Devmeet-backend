@@ -26,6 +26,8 @@ class Event extends Model
         'banner',
         'is_free',
         'price',
+        'longitude',
+        'latitude'
     ];
     protected $casts = [
         'date'    => 'date', // Turns the string into a Carbon date object
