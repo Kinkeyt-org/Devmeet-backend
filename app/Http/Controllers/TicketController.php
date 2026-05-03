@@ -115,7 +115,7 @@ $ticketdetails = Ticket::with('event')
     public function update(Request $request, $id)
     {
         //find the ticket you want to cancel 
-        $ticket = Ticket::findorfail($id);
+        $ticket = Ticket::with('event')->findOrFail($id);
         // if the person trying to cancel the cicket does not have the same id as the id of the person that own's the ticket show them the message and return an error
         if ($ticket->attendee_id !== $request->user()->id) {
             return response()->json([

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\EventCreationRequest;
 use App\Http\Requests\EventUpdateRequest;
 use App\Http\Resources\EventResource;
+use Illuminate\Support\Facades\Log;
 use App\Models\Event;
 use App\Models\Tag;
 use App\Services\HelperFunction;
@@ -27,7 +28,12 @@ class EventController extends Controller
                 'tags:id,name,slug',
             ])
             ->withCount('tickets')
-            ->where('date', '>=', now()->startOfDay()); // ← hide past events
+            ->where(DB::raw('"date"'), '>=', now()->startOfDay()); // ← hide past events
+        Log::info('Events Query', [
+            'sql'      => $query->toSql(),
+            'bindings' => $query->getBindings(),
+            'now'      => now()->startOfDay()->toDateTimeString(),
+        ]);
 
         // Category filter
         $query->when($request->filled('category'), function ($q) use ($request) {
@@ -55,13 +61,15 @@ class EventController extends Controller
                     ->whereIn('tags.slug', $tagSlugs);
             });
         });
+
         $sort = $request->get('sort', 'recent');
+
         if ($sort == 'recent') {
-            $events = $query->latest('date')
+            $events = $query->latest(DB::raw('"date"'))
                 ->paginate($perPage)
                 ->withQueryString();
         } else {
-            $events = $query->orderBy('date')
+            $events = $query->orderBy(DB::raw('"date"'))
                 ->paginate($perPage)
                 ->withQueryString();
         }
