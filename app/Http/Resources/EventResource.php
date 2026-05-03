@@ -23,6 +23,7 @@ class EventResource extends JsonResource
             'capacity' => $this->capacity,
             'banner' => $this->banner,
             'is_free' => $this->is_free,
+            'category' => 'required|string|max:100',
             'price' => $this->price,
             
             // FIX: Added the nullsafe operator (?) to both date methods
