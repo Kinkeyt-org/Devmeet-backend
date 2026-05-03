@@ -27,7 +27,7 @@ class EventController extends Controller
                 'tags:id,name,slug',
             ])
             ->withCount('tickets')
-            ->whereDate('date', '>=', today()); // ← hide past events
+            ->where('date', '>=', now()->startOfDay()); // ← hide past events
 
         // Category filter
         $query->when($request->filled('category'), function ($q) use ($request) {
