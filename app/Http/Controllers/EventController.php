@@ -26,7 +26,13 @@ class EventController extends Controller
                 'ticketTiers:id,event_id,name,price,capacity',
                 'tags:id,name,slug',
             ])
-            ->withCount('tickets');
+            ->withCount('tickets')
+            ->whereDate('date', '>=', today()); // ← hide past events
+
+        // Category filter
+        $query->when($request->filled('category'), function ($q) use ($request) {
+            $q->where('category', $request->category);
+        });
 
         // Search
         $query->when($request->filled('search'), function ($q) use ($request) {
@@ -49,20 +55,18 @@ class EventController extends Controller
                     ->whereIn('tags.slug', $tagSlugs);
             });
         });
-$sort = $request->get('sort', 'recent');
-if ($sort == 'recent'){
- $events = $query->latest('date')
-            ->paginate($perPage)
-            ->withQueryString();
-
-       
-}else {
-    $events = $query->orderBy('date')
-    ->paginate($perPage)
-    ->withQueryString();
-}
+        $sort = $request->get('sort', 'recent');
+        if ($sort == 'recent') {
+            $events = $query->latest('date')
+                ->paginate($perPage)
+                ->withQueryString();
+        } else {
+            $events = $query->orderBy('date')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
         return EventResource::collection($events);
-}
+    }
 
     public function show(Event $event)
     {
@@ -75,11 +79,11 @@ if ($sort == 'recent'){
         return new EventResource($event);
     }
 
-public function store(EventCreationRequest $request)
+    public function store(EventCreationRequest $request)
 
     {
         HelperFunction::attachLogData($request, [
-            'level'=> 'info',
+            'level' => 'info',
             'message' => 'Inspecting incoming frontend payload for location data',
             'incoming_data' => $request->all(),
         ]);
@@ -107,7 +111,7 @@ public function store(EventCreationRequest $request)
 
             return $event;
         });
-
+        event(new \App\Events\EventCreated($event));
         return (new EventResource($event->load([
             'user:id,name',
             'tags:id,name,slug'
@@ -125,12 +129,13 @@ public function store(EventCreationRequest $request)
             'latitude'    => 'nullable|numeric|between:-90,90',
             'longitude'   => 'nullable|numeric|between:-180,180',
             'capacity' => 'sometimes|integer|min:1',
+            'category' => 'sometimes|string|max:100',
             'date' => 'sometimes|date|after_or_equal:today',
             'is_free' => 'sometimes|boolean',
             'price' => 'nullable|numeric|min:0',
             'banner' => 'nullable|image|max:2048',
             // FIX: Removed strict 'array' validation so it accepts FormData strings
-            'tags' => 'nullable' 
+            'tags' => 'nullable'
         ]);
 
         if ($request->hasFile('banner')) {
@@ -191,7 +196,7 @@ public function store(EventCreationRequest $request)
         $event->tags()->sync($tagIds);
     }
 
-   
+
 
     public function destroy(Event $event)
     {
@@ -209,6 +214,4 @@ public function store(EventCreationRequest $request)
 
         return response()->json(['message' => 'Event deleted successfully.']);
     }
-
-    
 }
