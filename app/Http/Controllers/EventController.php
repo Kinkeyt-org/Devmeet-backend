@@ -28,7 +28,7 @@ class EventController extends Controller
                 'tags:id,name,slug',
             ])
             ->withCount('tickets')
-            ->where(DB::raw('"date"'), '>=', now()->startOfDay()); // ← hide past events
+            ->whereRaw('"date" >= ?', [now()->startOfDay()]); // ← hide past events
         Log::info('Events Query', [
             'sql'      => $query->toSql(),
             'bindings' => $query->getBindings(),
@@ -64,15 +64,15 @@ class EventController extends Controller
 
         $sort = $request->get('sort', 'recent');
 
-        if ($sort == 'recent') {
-            $events = $query->latest(DB::raw('"date"'))
-                ->paginate($perPage)
-                ->withQueryString();
-        } else {
-            $events = $query->orderBy(DB::raw('"date"'))
-                ->paginate($perPage)
-                ->withQueryString();
-        }
+     if ($sort == 'recent') {
+    $events = $query->orderByRaw('"date" DESC')
+        ->paginate($perPage)
+        ->withQueryString();
+} else {
+    $events = $query->orderByRaw('"date" ASC')
+        ->paginate($perPage)
+        ->withQueryString();
+}
         return EventResource::collection($events);
     }
 
