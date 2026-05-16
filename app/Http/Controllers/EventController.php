@@ -114,6 +114,7 @@ class EventController extends Controller
 
             // FIX: Use has() instead of filled(), and format the tags properly
             if ($request->has('tags')) {
+                   Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);
                 $this->syncTags($event, $request->input('tags'));
             }
 
@@ -180,14 +181,19 @@ class EventController extends Controller
         ]));
     }
 
-    // FIX: Removed strict "array" type hint so it accepts strings from FormData
     private function syncTags(Event $event, $tagsInput): void
     {
-        // If the tags came in as a comma-separated string from FormData, turn it into an array
         if (is_string($tagsInput)) {
-            $tagNames = explode(',', $tagsInput);
+            // Try JSON first (e.g. '["Technology","Design"]')
+            $decoded = json_decode($tagsInput, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $tagNames = $decoded;
+            } else {
+                // Fall back to plain comma-separated string
+                $tagNames = explode(',', $tagsInput);
+            }
         } else {
-            // Otherwise, it's already an array (or null)
             $tagNames = (array) $tagsInput;
         }
 
@@ -196,14 +202,12 @@ class EventController extends Controller
         $tagIds = collect($tagNames)->map(function ($name) {
             return Tag::firstOrCreate(
                 ['slug' => Str::slug($name)],
-                ['name' => $name]          
+                ['name' => $name]
             )->id;
         })->toArray();
 
-        // This will successfully clear tags if an empty array/string was passed!
         $event->tags()->sync($tagIds);
     }
-
 
 
     public function destroy(Event $event)
