@@ -64,15 +64,15 @@ class EventController extends Controller
 
         $sort = $request->get('sort', 'recent');
 
-     if ($sort == 'recent') {
-    $events = $query->orderByRaw('"date" DESC')
-        ->paginate($perPage)
-        ->withQueryString();
-} else {
-    $events = $query->orderByRaw('"date" ASC')
-        ->paginate($perPage)
-        ->withQueryString();
-}
+        if ($sort == 'recent') {
+            $events = $query->orderByRaw('"date" DESC')
+                ->paginate($perPage)
+                ->withQueryString();
+        } else {
+            $events = $query->orderByRaw('"date" ASC')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
         return EventResource::collection($events);
     }
 
@@ -195,8 +195,8 @@ class EventController extends Controller
 
         $tagIds = collect($tagNames)->map(function ($name) {
             return Tag::firstOrCreate(
-                ['name' => $name],
-                ['slug' => Str::slug($name)]
+                ['slug' => Str::slug($name)],
+                ['name' => $name]          
             )->id;
         })->toArray();
 
