@@ -10,6 +10,7 @@ use App\Models\Tag;
 use App\Services\HelperFunction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -86,7 +87,7 @@ public function store(EventCreationRequest $request)
 
         $data = $request->validated();
         $data['organizer_id'] = $request->user()->id;
-
+unset($data['tags']);
         if ($request->hasFile('banner')) {
             $path = $request->file('banner')->store('events/banners', 's3');
 
@@ -102,7 +103,8 @@ public function store(EventCreationRequest $request)
 
             // FIX: Use has() instead of filled(), and format the tags properly
             if ($request->has('tags')) {
-                $this->syncTags($event, $request->input('tags'));
+ Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);               
+ $this->syncTags($event, $request->input('tags'));
             }
 
             return $event;
@@ -182,8 +184,8 @@ public function store(EventCreationRequest $request)
 
         $tagIds = collect($tagNames)->map(function ($name) {
             return Tag::firstOrCreate(
-                ['name' => $name],
-                ['slug' => Str::slug($name)]
+               ['slug' => Str::slug($name)],
+  ['name' => $name]
             )->id;
         })->toArray();
 
