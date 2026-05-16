@@ -98,6 +98,7 @@ class EventController extends Controller
 
         $data = $request->validated();
         $data['organizer_id'] = $request->user()->id;
+        unset($data['tags']); // prevent tags from being passed to Event::create
 
         if ($request->hasFile('banner')) {
             $path = $request->file('banner')->store('events/banners', 's3');
@@ -114,7 +115,7 @@ class EventController extends Controller
 
             // FIX: Use has() instead of filled(), and format the tags properly
             if ($request->has('tags')) {
-                   Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);
+                Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);
                 $this->syncTags($event, $request->input('tags'));
             }
 
