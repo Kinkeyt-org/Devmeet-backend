@@ -58,7 +58,7 @@ class EventCreationRequest extends FormRequest
                 'max:2048', // Maximum file size in Kilobytes (2048 KB = 2 Megabytes)
                 'dimensions:min_width=800,min_height=400'
             ],
-            'tags' => ['nullable', 'string', 'max:255'],
+            'tags' => ['nullable'],
             'date' => [
                 'required',
                 'date',
