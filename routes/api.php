@@ -29,3 +29,18 @@ Route::middleware(['auth:sanctum', 'role:attendee'])->group(function () {
     Route::patch('tickets/{id}/cancel', [TicketController::class, 'update']);
 });
 require __DIR__ . '/auth.php';
+Route::get('/broadcast-test', function () {
+    broadcast(new class implements \Illuminate\Contracts\Broadcasting\ShouldBroadcastNow {
+        public function broadcastOn() { 
+            return new \Illuminate\Broadcasting\Channel('test-channel'); 
+        }
+        public function broadcastAs() { 
+            return 'test.event'; 
+        }
+        public function broadcastWith() { 
+            return ['message' => 'Hello from the Web Route!']; 
+        }
+    });
+
+    return 'Broadcast sent to Reverb!';
+});
