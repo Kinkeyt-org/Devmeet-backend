@@ -19,7 +19,7 @@ class EventCreated implements ShouldBroadcast
      * Create a new event instance.
      */
     public $event;
-    
+
     public function __construct(Event $event)
     {
         $this->event = $event;
@@ -36,4 +36,17 @@ class EventCreated implements ShouldBroadcast
             new Channel('events'),
         ];
     }
+    public function broadcastAs(): string
+{
+    return 'event.created';
+}
+public function broadcastWith(): array
+{
+    return [
+        'id' => $this->event->id,
+        'title' => $this->event->title,
+        'created_at' => $this->event->created_at->format('Y-m-d H:i:s'),
+        'message' => 'A new event was just created!'
+    ];
+}
 }
