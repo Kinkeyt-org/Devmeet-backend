@@ -50,20 +50,18 @@ class EventController extends Controller
                     ->whereIn('tags.slug', $tagSlugs);
             });
         });
-$sort = $request->get('sort', 'recent');
-if ($sort == 'recent'){
- $events = $query->latest('date')
-            ->paginate($perPage)
-            ->withQueryString();
-
-       
-}else {
-    $events = $query->orderBy('date')
-    ->paginate($perPage)
-    ->withQueryString();
-}
+        $sort = $request->get('sort', 'recent');
+        if ($sort == 'recent') {
+            $events = $query->latest('date')
+                ->paginate($perPage)
+                ->withQueryString();
+        } else {
+            $events = $query->orderBy('date')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
         return EventResource::collection($events);
-}
+    }
 
     public function show(Event $event)
     {
@@ -76,18 +74,18 @@ if ($sort == 'recent'){
         return new EventResource($event);
     }
 
-public function store(EventCreationRequest $request)
+    public function store(EventCreationRequest $request)
 
     {
         HelperFunction::attachLogData($request, [
-            'level'=> 'info',
+            'level' => 'info',
             'message' => 'Inspecting incoming frontend payload for location data',
             'incoming_data' => $request->all(),
         ]);
 
         $data = $request->validated();
         $data['organizer_id'] = $request->user()->id;
-unset($data['tags']);
+        unset($data['tags']);
         if ($request->hasFile('banner')) {
             $path = $request->file('banner')->store('events/banners', 's3');
 
@@ -103,13 +101,13 @@ unset($data['tags']);
 
             // FIX: Use has() instead of filled(), and format the tags properly
             if ($request->has('tags')) {
- Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);               
- $this->syncTags($event, $request->input('tags'));
+                Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);
+                $this->syncTags($event, $request->input('tags'));
             }
 
             return $event;
         });
-
+        event(new \App\Events\EventCreated($event->load(['user:id,name', 'tags:id,name,slug'])));
         return (new EventResource($event->load([
             'user:id,name',
             'tags:id,name,slug'
@@ -132,7 +130,7 @@ unset($data['tags']);
             'price' => 'nullable|numeric|min:0',
             'banner' => 'nullable|image|max:2048',
             // FIX: Removed strict 'array' validation so it accepts FormData strings
-            'tags' => 'nullable' 
+            'tags' => 'nullable'
         ]);
 
         if ($request->hasFile('banner')) {
@@ -184,8 +182,8 @@ unset($data['tags']);
 
         $tagIds = collect($tagNames)->map(function ($name) {
             return Tag::firstOrCreate(
-               ['slug' => Str::slug($name)],
-  ['name' => $name]
+                ['slug' => Str::slug($name)],
+                ['name' => $name]
             )->id;
         })->toArray();
 
@@ -193,7 +191,7 @@ unset($data['tags']);
         $event->tags()->sync($tagIds);
     }
 
-   
+
 
     public function destroy(Event $event)
     {
@@ -211,6 +209,4 @@ unset($data['tags']);
 
         return response()->json(['message' => 'Event deleted successfully.']);
     }
-
-    
 }
