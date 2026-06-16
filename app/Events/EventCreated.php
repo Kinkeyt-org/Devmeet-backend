@@ -45,6 +45,8 @@ public function broadcastWith(): array
     return [
         'id' => $this->event->id,
         'title' => $this->event->title,
+        'user' => $this->event->user, 
+        'tags' => $this->event->tags,
         'created_at' => $this->event->created_at->format('Y-m-d H:i:s'),
         'message' => 'A new event was just created!'
     ];
