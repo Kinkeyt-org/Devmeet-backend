@@ -77,45 +77,65 @@ if ($sort == 'recent'){
     }
 
 public function store(EventCreationRequest $request)
+{
+    // 1. Logging
+    HelperFunction::attachLogData($request, [
+        'level'=> 'info',
+        'message' => 'Inspecting incoming frontend payload for location data',
+        'incoming_data' => $request->all(),
+    ]);
 
-    {
-        HelperFunction::attachLogData($request, [
-            'level'=> 'info',
-            'message' => 'Inspecting incoming frontend payload for location data',
-            'incoming_data' => $request->all(),
-        ]);
+    // 2. Data Preparation
+    $data = $request->validated();
+    $data['organizer_id'] = $request->user()->id;
+    unset($data['tags']);
 
-        $data = $request->validated();
-        $data['organizer_id'] = $request->user()->id;
-unset($data['tags']);
-        if ($request->hasFile('banner')) {
-            $path = $request->file('banner')->store('events/banners', 's3');
+    // 3. File Upload
+    if ($request->hasFile('banner')) {
+        $path = $request->file('banner')->store('events/banners', 's3');
 
-            if (!$path) {
-                return response()->json(['message' => 'Banner upload failed'], 500);
-            }
-
-            $data['banner'] = $path;
+        if (!$path) {
+            return response()->json(['message' => 'Banner upload failed'], 500);
         }
 
-        $event = DB::transaction(function () use ($data, $request) {
-            $event = Event::create($data);
-
-            // FIX: Use has() instead of filled(), and format the tags properly
-            if ($request->has('tags')) {
- Log::info('Tags input', ['raw' => $request->input('tags'), 'type' => gettype($request->input('tags'))]);               
- $this->syncTags($event, $request->input('tags'));
-            }
-
-            return $event;
-        });
-event(new \App\Events\EventCreated($event->load(['user:id,name', 'tags:id,name,slug'])));
-        return (new EventResource($event->load([
-            'user:id,name',
-            'tags:id,name,slug'
-        ])))->response()->setStatusCode(201);
+        $data['banner'] = $path;
     }
 
+    // 4. ACID Transaction with Secure Decoding
+    $event = DB::transaction(function () use ($data, $request) {
+        $event = Event::create($data);
+
+        if ($request->has('tags')) {
+            $tags = $request->input('tags');
+
+            // STABILITY FIX: Securely decode the string
+            if (is_string($tags)) {
+                $decoded = json_decode($tags, true);
+                // Only use the decoded value if it's valid JSON
+                $tags = (json_last_error() === JSON_ERROR_NONE) ? $decoded : [];
+            }
+
+            // Ensure we are definitely passing an array to syncTags
+            if (is_array($tags) && !empty($tags)) {
+                $this->syncTags($event, $tags);
+            }
+        }
+
+        return $event;
+    });
+
+    // 5. OPTIMIZATION: Eager load relationships exactly ONCE
+    $event->load([
+        'user:id,name',
+        'tags:id,name,slug'
+    ]);
+
+    // 6. Broadcast the loaded event
+    event(new \App\Events\EventCreated($event));
+
+    // 7. Return the formatted resource
+    return (new EventResource($event))->response()->setStatusCode(201);
+}
     public function update(Request $request, Event $event)
     {
         Gate::authorize('update', $event);
