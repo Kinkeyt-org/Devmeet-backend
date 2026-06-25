@@ -18,6 +18,7 @@ class EventCreated implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
+    
     public $event;
 
     public function __construct(Event $event)
